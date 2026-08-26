@@ -1,0 +1,18 @@
+### Health check
+GET http://localhost:8000/health
+
+### Chat - basic message
+POST http://localhost:8000/chat
+Content-Type: application/json
+
+{
+  "message": "hello"
+}
+
+### Chat - empty message (should fail validation)
+POST http://localhost:8000/chat
+Content-Type: application/json
+
+{
+  "message": ""
+}
