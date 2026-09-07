@@ -21,3 +21,12 @@ def get_recent_messages(db: Session, conversation_id: str, limit: int = MAX_HIST
     )
     messages = db.execute(stmt).scalars().all()
     return list(reversed(messages))  # oldest first, for sending to the LLM
+
+
+def get_all_messages_ordered(db: Session, conversation_id: str) -> list[Message]:
+    stmt = (
+        select(Message)
+        .where(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.asc())
+    )
+    return list(db.execute(stmt).scalars().all())

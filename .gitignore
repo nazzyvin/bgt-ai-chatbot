@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 .env
 venv/
+
+# Throwaway dev/test scripts (not part of the app)
+simulate_long_chat.py
+test_summarization_stub.py

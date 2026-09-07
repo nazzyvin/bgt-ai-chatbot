@@ -5,9 +5,13 @@ from sqlalchemy.orm import Session
 
 from app.models.conversation import Conversation
 from app.models.message import Message
+from app.repositories.message_repository import get_all_messages_ordered
+from app.services.llm_service import summarize_messages
 
 CONVERSATION_EXPIRY_HOURS = int(os.getenv("CONVERSATION_EXPIRY_HOURS", 168))
 
+KEEP_RECENT_MESSAGES = 20
+SUMMARIZE_THRESHOLD = 30  # only summarize once conversation is meaningfully long
 
 def is_expired(db: Session, conversation: Conversation) -> bool:
     latest_message = (
@@ -53,3 +57,22 @@ def delete_conversation(db: Session, conversation_id: str) -> bool:
         return False
     db.delete(conversation) # cascade="all, delete-orphan" on the model handles the messages
     return True
+
+
+def maybe_summarize_conversation(db: Session, conversation: Conversation) -> None:
+    all_messages = get_all_messages_ordered(db, conversation.id)
+    total = len(all_messages)
+
+    if total <= SUMMARIZE_THRESHOLD:
+        return  # not long enough yet, nothing to do
+
+    already_summarized = conversation.summarized_message_count
+    messages_to_summarize = all_messages[already_summarized: total - KEEP_RECENT_MESSAGES]
+
+    if not messages_to_summarize:
+        return  # nothing new to fold in
+
+    payload = [{"role": m.role, "content": m.content} for m in messages_to_summarize]
+    conversation.summary = summarize_messages(conversation.summary, payload)
+    conversation.summarized_message_count = already_summarized + len(messages_to_summarize)
+    db.add(conversation)

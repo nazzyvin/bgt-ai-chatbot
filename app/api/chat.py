@@ -4,7 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.repositories.conversation_repository import delete_conversation, get_or_create_conversation
+from app.repositories.conversation_repository import (
+    delete_conversation,
+    get_or_create_conversation,
+    maybe_summarize_conversation,
+)
 from app.repositories.message_repository import get_recent_messages, save_message
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.llm_service import LLMServiceError, generate_reply
@@ -25,13 +29,15 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Conversation not found.") from exc
 
     save_message(db, conversation.id, role="user", content=request.message)
-    db.flush()  # so the message we jsut saved is included in the history fetch below
+    db.flush()  # so the message we just saved is included in the history fetch below
+
+    maybe_summarize_conversation(db, conversation)
 
     history = get_recent_messages(db, conversation.id)
     history_payload= [{"role": m.role, "content": m.content} for m in history]
 
     try:
-        reply_text = generate_reply(history_payload)
+        reply_text = generate_reply(history_payload, summary=conversation.summary)
     except LLMServiceError as exc:
         logger.error("Chat request failed: %s", exc)
         db.rollback()
@@ -50,4 +56,4 @@ def reset_conversation(conversation_id: str, db: Session = Depends(get_db)):
     if not deleted:
         raise HTTPException(status_code=404, detail="Conversation not found.")
     db.commit()
-    return {"status": "deleted", "converstion_id": conversation_id}
+    return {"status": "deleted", "conversation_id": conversation_id}
