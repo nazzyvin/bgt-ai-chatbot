@@ -17,10 +17,21 @@ class LLMServiceError(Exception):
     """Raised when the LLM provider call fails."""
 
 
-def generate_reply(history: list[dict], summary: str | None = None) -> str:
+BASE_SYSTEM_INSTRUCTION = (
+    "You are a helpful assistant for the company's chatbot. "
+    "You have access to a create_ticket tool that creates a support ticket for a "
+    "team member to follow up on. Only use it when the user clearly wants help with "
+    "a specific problem, and briefly confirm the summary with them first if there's "
+    "any ambiguity about what the ticket should say."  
+)
+
+
+def generate_reply(history: list[dict], summary: str | None = None, tools: list | None = None) -> str:
     """
     history: list of {"role": "user"|"assistant", "content": str}, oldest first.
-    The Gemini API expects roles "user" and "model", so we translate here.
+    summary: optional running summary of older messages not included in history.
+    tools: optional list of plain Python functions the model may call (automatic
+        function calling - the SDK executes them and returns the final text).
     """
     contents = [
         {
@@ -30,11 +41,14 @@ def generate_reply(history: list[dict], summary: str | None = None) -> str:
         for msg in history
     ]
 
-    config = None
+    system_instruction = BASE_SYSTEM_INSTRUCTION
     if summary:
-        config = types.GenerateContentConfig(
-            system_instruction=f"Earlier conversation summary: {summary}"
-        )
+        system_instruction += f"\n\nEarlier conversation summary: {summary}"
+    
+    config = types.GenerateContentConfig(
+        system_instruction=system_instruction,
+        tools=tools
+    )
 
     try:
         response = _client.models.generate_content(

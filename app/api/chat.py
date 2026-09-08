@@ -12,6 +12,7 @@ from app.repositories.conversation_repository import (
 from app.repositories.message_repository import get_recent_messages, save_message
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.llm_service import LLMServiceError, generate_reply
+from app.services.chat_tools import build_tools
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -36,8 +37,10 @@ def chat(request: ChatRequest, db: Session = Depends(get_db)):
     history = get_recent_messages(db, conversation.id)
     history_payload= [{"role": m.role, "content": m.content} for m in history]
 
+    tools = build_tools(db, conversation.id)
+
     try:
-        reply_text = generate_reply(history_payload, summary=conversation.summary)
+        reply_text = generate_reply(history_payload, summary=conversation.summary, tools=tools)
     except LLMServiceError as exc:
         logger.error("Chat request failed: %s", exc)
         db.rollback()

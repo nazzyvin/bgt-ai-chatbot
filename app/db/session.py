@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from app.db.base import Base
 from app.models.conversation import Conversation    # noqa: f401
 from app.models.message import Message  # noqa: f401
+from app.models.ticket import Ticket  # noqa: F401
 
 load_dotenv()
 
