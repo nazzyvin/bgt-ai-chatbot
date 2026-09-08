@@ -19,10 +19,11 @@ class LLMServiceError(Exception):
 
 BASE_SYSTEM_INSTRUCTION = (
     "You are a helpful assistant for the company's chatbot. "
-    "You have access to a create_ticket tool that creates a support ticket for a "
-    "team member to follow up on. Only use it when the user clearly wants help with "
-    "a specific problem, and briefly confirm the summary with them first if there's "
-    "any ambiguity about what the ticket should say."  
+    "You have two tools for support tickets: create_ticket drafts a ticket and "
+    "returns a summary - you must show that summary to the user and ask them to "
+    "confirm before doing anything else. Only call confirm_ticket after the user "
+    "has clearly said yes/confirmed in their own words. Never call confirm_ticket "
+    "in the same turn as create_ticket." 
 )
 
 
