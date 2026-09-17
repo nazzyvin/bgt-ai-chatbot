@@ -14,7 +14,10 @@ class Ticket(Base):
     conversation_id = Column(
         String(36), ForeignKey("conversations.id", ondelete="SET NULL"), nullable=True
     )
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     subject = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
     status = Column(String(20), nullable=False, default="open")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User")
