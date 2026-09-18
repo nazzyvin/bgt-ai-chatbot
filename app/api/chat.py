@@ -1,6 +1,7 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from app.core.rate_limit import limiter
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_optional
@@ -28,15 +29,17 @@ router = APIRouter()
 
 
 @router.post("/chat", response_model=ChatResponse)
+@limiter.limit("30/minute")
 def chat(
-    request: ChatRequest,
+    request: Request,
+    payload: ChatRequest,
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional),
 ):
-    logger.info("Received chat message: %s", request.message)
+    logger.info("Received chat message: %s", payload.message)
 
     try:
-        conversation = get_or_create_conversation(db, request.conversation_id, current_user)
+        conversation = get_or_create_conversation(db, payload.conversation_id, current_user)
     except ConversationNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Conversation not found.") from exc
     except ConversationAccessDeniedError as exc:
@@ -44,7 +47,7 @@ def chat(
     except ConversationExpiredError as exc:
         raise HTTPException(status_code=410, detail="This conversation has expired. Please start a new one.") from exc
 
-    save_message(db, conversation.id, role="user", content=request.message)
+    save_message(db, conversation.id, role="user", content=payload.message)
     db.flush()
 
     maybe_summarize_conversation(db, conversation)
@@ -69,7 +72,9 @@ def chat(
 
 
 @router.delete("/conversations/{conversation_id}")
+@limiter.limit("30/minute")
 def reset_conversation(
+    request: Request,
     conversation_id: str,
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user_optional),

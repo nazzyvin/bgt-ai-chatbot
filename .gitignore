@@ -5,8 +5,7 @@ __pycache__/
 venv/
 
 # Throwaway dev/test scripts (not part of the app)
-simulate_long_chat.py
-test_summarization_stub.py
 test_ticket_tool.py
-diff.txt
 test_authorization.py
+test_expiry.py
+diff.txt

@@ -1,16 +1,21 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
 from app.api import auth, chat, health
 from app.core.logging_config import configure_logging
+from app.core.rate_limit import limiter
 
 configure_logging()
 
 app = FastAPI(title="BGT AI Chatbot")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"], # add your PHP site's URL here later
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
