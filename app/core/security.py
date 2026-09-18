@@ -10,9 +10,9 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY or len(SECRET_KEY) < 32:
     raise RuntimeError(
-        "SECRET_KEY is missing or too short (min 32 chars)."
-        "Set a strong random value in .env — generate with: "
-        "python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+        "SECRET_KEY is missing or too short (min 32 chars)." 
+        "Set a strong random value in .env — generate with: " 
+        "python -c \"import secrets; print(secrets.token_urlsafe(48))\"" 
     )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours

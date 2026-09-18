@@ -8,3 +8,5 @@ venv/
 simulate_long_chat.py
 test_summarization_stub.py
 test_ticket_tool.py
+diff.txt
+test_authorization.py

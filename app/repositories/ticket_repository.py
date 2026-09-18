@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from app.models.ticket import Ticket
 
 
-def save_ticket(db: Session, conversation_id: str, subject: str, description: str, status: str = "pending_confirmation") -> Ticket:
-    ticket = Ticket(conversation_id=conversation_id, subject=subject, description=description, status=status)
+def save_ticket(db: Session, conversation_id: str, subject: str, description: str, status: str = "pending_confirmation", user_id: str | None = None) -> Ticket:
+    ticket = Ticket(conversation_id=conversation_id, subject=subject, description=description, status=status, user_id=user_id)
     db.add(ticket)
     db.flush()
     return ticket

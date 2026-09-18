@@ -2,18 +2,21 @@ import logging
 
 from sqlalchemy.orm import Session
 
+from app.models.user import User
 from app.repositories.ticket_repository import confirm_ticket as confirm_ticket_repo
-from app.repositories.ticket_repository import get_pending_ticket, save_ticket
+from app.repositories.ticket_repository import get_pending_ticket, get_ticket, save_ticket
 
 logger = logging.getLogger(__name__)
 
 
-def build_tools(db: Session, conversation_id: str) -> list:
+def build_tools(db: Session, conversation_id: str, current_user: User | None) -> list:
     """
     Returns the list of tool functions available to the LLM for this request.
-    Built per-request (via closure) so each tool has access to this request's
-    db session and conversation_id without exposing them to the LLM itself.
+    Anonymous users (current_user is None) get no ticket tools at all - the
+    system prompt is told to invite them to log in instead.
     """
+    if current_user is None:
+        return []
 
     def create_ticket(subject: str, description: str) -> dict:
         """Draft a support ticket for the user to review. This does NOT finalize
@@ -28,7 +31,9 @@ def build_tools(db: Session, conversation_id: str) -> list:
             return {"error": "subject and description must not be empty"}
 
         try:
-            ticket = save_ticket(db, conversation_id, subject.strip(), description.strip())
+            ticket = save_ticket(
+                db, conversation_id, subject.strip(), description.strip(), user_id=current_user.id
+            )
         except Exception:
             logger.exception("Failed to draft ticket")
             return {"error": "failed to draft ticket"}
@@ -47,16 +52,17 @@ def build_tools(db: Session, conversation_id: str) -> list:
         Args:
             ticket_id: The ID returned by create_ticket.
         """
-        ticket = confirm_ticket_repo(db, ticket_id)
+        ticket = get_ticket(db, ticket_id)
         if ticket is None:
             return {"error": "ticket not found"}
 
-        logger.info("Tool call: confirm_ticket -> ticket_id=%s", ticket.id)
-        return {"ticket_id": ticket.id, "status": "open"}
+        is_owner = ticket.user_id == current_user.id
+        is_staff = current_user.role in ("staff", "admin")
+        if not (is_owner or is_staff or ticket.user_id is None):
+            return {"error": "not authorized to confirm this ticket"}
 
-    tools = [create_ticket]
+        confirmed = confirm_ticket_repo(db, ticket_id)
+        logger.info("Tool call: confirm_ticket -> ticket_id=%s by user=%s", confirmed.id, current_user.id)
+        return {"ticket_id": confirmed.id, "status": "open"}
 
-    if get_pending_ticket(db, conversation_id) is not None:
-        tools.append(confirm_ticket)
-
-    return tools
+    return [create_ticket, confirm_ticket]

@@ -23,7 +23,13 @@ BASE_SYSTEM_INSTRUCTION = (
     "returns a summary - you must show that summary to the user and ask them to "
     "confirm before doing anything else. Only call confirm_ticket after the user "
     "has clearly said yes/confirmed in their own words. Never call confirm_ticket "
-    "in the same turn as create_ticket." 
+    "in the same turn as create_ticket."
+)
+
+NO_TOOLS_NOTE = (
+    "\n\nYou do NOT have any ticket-creation tools available in this conversation "
+    "because the user is not logged in. If they need to file a support ticket, "
+    "tell them to log in first."
 )
 
 
@@ -43,12 +49,14 @@ def generate_reply(history: list[dict], summary: str | None = None, tools: list 
     ]
 
     system_instruction = BASE_SYSTEM_INSTRUCTION
+    if not tools:
+        system_instruction += NO_TOOLS_NOTE
     if summary:
         system_instruction += f"\n\nEarlier conversation summary: {summary}"
-    
+
     config = types.GenerateContentConfig(
         system_instruction=system_instruction,
-        tools=tools
+        tools=tools,
     )
 
     try:
